@@ -130,6 +130,10 @@ real_device()
 	declare dev="$1"
 	declare realdev
 
+	if [ $IS_BIND_MOUNT -eq 1 ]; then
+		REAL_DEVICE="$dev"
+		return $OCF_SUCCESS
+	fi
 	REAL_DEVICE=""
 
 	[ -z "$dev" ] && return $OCF_ERR_ARGS
@@ -192,6 +196,15 @@ verify_device()
 	return $OCF_ERR_ARGS
 }
 
+list_mounts()
+{
+	if [ $IS_BIND_MOUNT -eq 1 ]; then
+		cat /etc/mtab
+	else
+		cat /proc/mounts
+	fi
+}
+
 ##
 # Tries to use findmnt util to return list
 # of mountpoints for a device
@@ -217,11 +230,11 @@ try_findmnt()
 
 	which findmnt > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
-		FINDMNT_OUTPUT=$(findmnt -o TARGET --noheadings $1)
+		FINDMNT_OUTPUT="$(findmnt -o TARGET --noheadings $1)"
 		if [ $? -ne 0 ]; then
 			# workaround mount helpers inconsistency that still
 			# add / on the device entry in /proc/mounts
-			FINDMNT_OUTPUT=$(findmnt -o TARGET --noheadings $1/)
+			FINDMNT_OUTPUT="$(findmnt -o TARGET --noheadings $1/)"
 			if [ $? -ne 0 ]; then
 				return 1
 			else
@@ -325,7 +338,7 @@ mount_in_use () {
 				if [ "$tmp_mp" = "$mp" ]; then
 					return $YES
 				fi
-			done < <(echo $FINDMNT_OUTPUT)
+			done < <(echo "$FINDMNT_OUTPUT")
 			;;
 		*)
 			return $YES
@@ -368,7 +381,7 @@ mount_in_use () {
 		if [ -n "$tmp_mp" -a "$tmp_mp" = "$mp" ]; then
 			return $YES
 		fi
-	done < <(cat /proc/mounts)
+	done < <(list_mounts)
 
 	return $NO
 }
@@ -403,7 +416,7 @@ real_mountpoint()
 				found=0
 				break
 			fi
-		done < <(echo $FINDMNT_OUTPUT)
+		done < <(echo "$FINDMNT_OUTPUT")
 		;;
 	1)
 		# findmnt found no mount points for the device
@@ -450,7 +463,7 @@ real_mountpoint()
 					fi
 				fi
 			fi
-		done < <(cat /proc/mounts)
+		done < <(list_mounts)
 	esac
 
 	if [ $found -ne 0 ]; then
