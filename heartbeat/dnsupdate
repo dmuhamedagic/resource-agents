@@ -198,7 +198,7 @@ dnsupdate_validate() {
 	: ${OCF_RESKEY_serverport:="53"}
 	dns_serverport=${OCF_RESKEY_serverport}
 	: ${OCF_RESKEY_ttl:="300"}
-	nsupdate_opts=${OCF_RESKEY_opts}
+	nsupdate_opts=${OCF_RESKEY_nsupdate_opts}
 
 	if [ -z "$hostname" ]; then
 		ocf_log err "No hostname specified."
